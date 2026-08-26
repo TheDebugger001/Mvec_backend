@@ -293,3 +293,160 @@ exports.resetPassword = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+exports.addAddress = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId || req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const {
+      type,
+      country,
+      provinceState,
+      cityDistrict,
+      street,
+      building,
+      apartment,
+      postalCode,
+      phone,
+      deliveryInstructions,
+      isDefaultShipping,
+      isDefaultBilling,
+    } = req.body;
+
+    // Unset current default flags if this address is being set as default
+    if (isDefaultShipping) {
+      user.addresses.forEach((addr) => (addr.isDefaultShipping = false));
+    }
+    if (isDefaultBilling) {
+      user.addresses.forEach((addr) => (addr.isDefaultBilling = false));
+    }
+
+    // First address added automatically becomes default
+    const isFirstAddress = user.addresses.length === 0;
+
+    user.addresses.push({
+      type,
+      country,
+      provinceState,
+      cityDistrict,
+      street,
+      building,
+      apartment,
+      postalCode,
+      phone,
+      deliveryInstructions,
+      isDefaultShipping: isFirstAddress ? true : Boolean(isDefaultShipping),
+      isDefaultBilling: isFirstAddress ? true : Boolean(isDefaultBilling),
+    });
+
+    await user.save();
+    return res.status(201).json({
+      message: "Address added successfully",
+      addresses: user.addresses,
+    });
+  } catch (error) {
+    console.error("Error adding address:", error);
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+// @desc    Get all addresses for logged-in user
+// @route   GET /api/users/addresses
+// @access  Private
+exports.getAddresses = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId || req.user.id).select("addresses");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ addresses: user.addresses });
+  } catch (error) {
+    console.error("Error fetching addresses:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// @desc    Update an existing address
+// @route   PUT /api/users/addresses/:addressId
+// @access  Private
+exports.updateAddress = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId || req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const address = user.addresses.id(req.params.addressId);
+    if (!address) {
+      return res.status(404).json({ message: "Address not found" });
+    }
+
+    const { isDefaultShipping, isDefaultBilling } = req.body;
+
+    // Handle default flag switches across other stored addresses
+    if (isDefaultShipping) {
+      user.addresses.forEach((addr) => (addr.isDefaultShipping = false));
+    }
+    if (isDefaultBilling) {
+      user.addresses.forEach((addr) => (addr.isDefaultBilling = false));
+    }
+
+    Object.assign(address, req.body);
+
+    await user.save();
+    return res.status(200).json({
+      message: "Address updated successfully",
+      addresses: user.addresses,
+    });
+  } catch (error) {
+    console.error("Error updating address:", error);
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+// @desc    Delete an address
+// @route   DELETE /api/users/addresses/:addressId
+// @access  Private
+exports.deleteAddress = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId || req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const address = user.addresses.id(req.params.addressId);
+    if (!address) {
+      return res.status(404).json({ message: "Address not found" });
+    }
+
+    const wasDefaultShipping = address.isDefaultShipping;
+    const wasDefaultBilling = address.isDefaultBilling;
+
+    // Remove the address subdocument
+    address.deleteOne();
+
+    // Reassign defaults if a default address was deleted
+    if (user.addresses.length > 0) {
+      if (wasDefaultShipping && !user.addresses.some((a) => a.isDefaultShipping)) {
+        user.addresses[0].isDefaultShipping = true;
+      }
+      if (wasDefaultBilling && !user.addresses.some((a) => a.isDefaultBilling)) {
+        user.addresses[0].isDefaultBilling = true;
+      }
+    }
+
+    await user.save();
+    return res.status(200).json({
+      message: "Address deleted successfully",
+      addresses: user.addresses,
+    });
+  } catch (error) {
+    console.error("Error deleting address:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};

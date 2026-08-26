@@ -1,5 +1,27 @@
 const mongoose = require("mongoose");
 
+const addressSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ["HOME", "OFFICE", "PARENTS", "OTHER"],
+      default: "HOME",
+    },
+    country: { type: String, required: true },
+    provinceState: { type: String, required: true },
+    cityDistrict: { type: String, required: true },
+    street: { type: String, required: true },
+    building: String,
+    apartment: String,
+    postalCode: String,
+    phone: { type: String, required: true },
+    deliveryInstructions: String,
+    isDefaultShipping: { type: Boolean, default: false },
+    isDefaultBilling: { type: Boolean, default: false },
+  },
+  { _id: true }
+);
+
 const userSchema = new mongoose.Schema(
   {
     Fullname: {
@@ -60,11 +82,32 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    addresses: [addressSchema],
+
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );
+
+// Pre-save validation to enforce a single default shipping/billing address
+userSchema.pre("save", function () {
+  if (this.isModified("addresses")) {
+    const defaultShippingCount = this.addresses.filter(
+      (addr) => addr.isDefaultShipping
+    ).length;
+    const defaultBillingCount = this.addresses.filter(
+      (addr) => addr.isDefaultBilling
+    ).length;
+
+    if (defaultShippingCount > 1) {
+      throw new Error("Only one address can be set as default shipping.");
+    }
+    if (defaultBillingCount > 1) {
+      throw new Error("Only one address can be set as default billing.");
+    }
+  }
+});
 
 const User = mongoose.model("User", userSchema);
 
