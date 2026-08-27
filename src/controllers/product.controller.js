@@ -95,6 +95,18 @@ exports.updateProduct = async (req, res) => {
       delete updates.stockQuantity; // Removes stockQuantity from update payload
     }
 
+    // Add before product.save() inside updateProduct
+    if (updates.stockQuantity !== undefined) {
+      if (updates.stockQuantity <= 0) {
+        updates.stockQuantity = 0;
+        updates.status = "OUT_OF_STOCK";
+      } else if (
+        product.status === "OUT_OF_STOCK" &&
+        updates.stockQuantity > 0
+      ) {
+        updates.status = "ACTIVE"; // Auto-reactivate when re-stocked
+      }
+    }
     // 3. Apply updates and save
     Object.assign(product, updates);
     await product.save();
