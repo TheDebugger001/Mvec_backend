@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
   vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -38,4 +38,4 @@ productSchema.index({ name: 'text', description: 'text', sku: 'text', brand: 'te
 // Wildcard Index for Dynamic Attribute Filtering
 productSchema.index({ "attributes.$**": 1 });
 
-export const Product = mongoose.model('Product', productSchema);
+module.exports = mongoose.model('Product', productSchema);

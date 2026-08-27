@@ -3,6 +3,11 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const routes = require("./src/routes/auth.routes");
 
+// Load all models into mongoose entry
+const User = require("./src/models/User");
+const Category = require("./src/models/Category");
+const Product = require("./src/models/Product");
+
 dotenv.config();
 
 mongoose.connect(process.env.MONGO_URI)
@@ -18,6 +23,8 @@ const app = express();
 app.use(express.json());
 
 app.use("/api/auth", require("./src/routes/auth.routes"));
+// adding product routes
+app.use("/api/products", require("./src/routes/product.routes"));
 
 app.get("/", (req, res) => {
   res.json({
@@ -26,7 +33,8 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 4000;
+const HOST = process.env.HOST || "0.0.0.0";
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
 });

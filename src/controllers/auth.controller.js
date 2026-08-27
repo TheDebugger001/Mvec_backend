@@ -56,14 +56,24 @@ exports.loginUser = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
 
-    const user = await User.findOne({
-      $or: [{ email: email || null }, { phone: phone || null }],
-    });
-
-    if (!user || !phone) {
+    if ((!email && !phone) || !password) {
       return res
         .status(400)
-        .json({ message: "Invalid (email or phone) or password) " });
+        .json({ message: "Email or phone and password are required" });
+    }
+
+    const identifierQuery = email
+      ? { email: email.trim().toLowerCase() }
+      : { phone: phone.trim() };
+
+    const user = await User.findOne({
+      $or: [identifierQuery],
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Invalid (email or phone) or password)" });
     }
 
     if (!user.password || !user.phone) {
