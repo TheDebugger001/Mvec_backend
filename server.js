@@ -30,6 +30,7 @@ app.use(express.json());
 app.use("/api/auth", require("./src/routes/auth.routes"));
 app.use("/api/products", require("./src/routes/product.routes"));
 app.use("/api/cart", require("./src/routes/cart.routes"));
+app.use("/api/orders", require("./src/routes/order.routes"));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get("/", (req, res) => {

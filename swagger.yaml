@@ -1,19 +1,218 @@
 openapi: 3.0.3
 info:
   title: Multi-Vendor E-Commerce API
-  description: API documentation for product management, role-based controls, and buyer cart operations.
+  description: Comprehensive OpenAPI documentation covering Authentication, Address Management, Products, and Cart APIs.
   version: 1.0.0
 servers:
   - url: http://localhost:4000/api
     description: Local Development Server
 
 paths:
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
+  # AUTHENTICATION & USER ROUTES
+  # ===========================================================================
+  /auth/register:
+    post:
+      summary: Register a new user or vendor
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - Fullname
+                - email
+                - password
+              properties:
+                Fullname:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: Password123!
+                role:
+                  type: string
+                  enum: [customer, vendor]
+                  default: customer
+      responses:
+        '201':
+          description: User registered successfully.
+
+  /auth/login:
+    post:
+      summary: Login user / vendor
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: Password123!
+      responses:
+        '200':
+          description: Login successful, returns Bearer token.
+
+  /auth/google-login:
+    post:
+      summary: OAuth Google Login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idToken
+              properties:
+                idToken:
+                  type: string
+                  example: eyJhbGciOiJSUzI1NiIs...
+      responses:
+        '200':
+          description: Authenticated successfully via Google.
+
+  /auth/forgot-password:
+    post:
+      summary: Request password reset token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+      responses:
+        '200':
+          description: Reset token sent to email.
+
+  /auth/reset-password/{token}:
+    post:
+      summary: Reset password using token
+      tags:
+        - Authentication
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  example: NewPassword123!
+      responses:
+        '200':
+          description: Password updated successfully.
+
+  # ===========================================================================
+  # ADDRESS ROUTES
+  # ===========================================================================
+  /addresses:
+    get:
+      summary: Get user saved addresses
+      tags:
+        - Addresses
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of saved addresses.
+
+    post:
+      summary: Add a new address
+      tags:
+        - Addresses
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '201':
+          description: Address added successfully.
+
+  /addresses/{addressId}:
+    put:
+      summary: Update an address
+      tags:
+        - Addresses
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: addressId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '200':
+          description: Address updated successfully.
+
+    delete:
+      summary: Delete an address
+      tags:
+        - Addresses
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: addressId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Address deleted successfully.
+
+  # ===========================================================================
   # PRODUCT ROUTES
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
   /products:
     get:
-      summary: Get active products catalog
+      summary: Get active products catalog (Public)
       tags:
         - Products
       parameters:
@@ -51,7 +250,7 @@ paths:
 
   /products/slug/{slug}:
     get:
-      summary: Get single product by slug
+      summary: Get single product by slug (Public)
       tags:
         - Products
       parameters:
@@ -69,7 +268,7 @@ paths:
 
   /products/{id}:
     get:
-      summary: Get single product by ID
+      summary: Get single product by ID (Public)
       tags:
         - Products
       parameters:
@@ -112,7 +311,7 @@ paths:
           description: Product not found.
 
     delete:
-      summary: Delete product (Vendor updates own; Admin deletes any)
+      summary: Delete product (Vendor deletes own; Admin deletes any)
       tags:
         - Products
       security:
@@ -142,9 +341,9 @@ paths:
         '403':
           description: Forbidden - Vendor role required.
 
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
   # CART ROUTES
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
   /cart:
     get:
       summary: Get user's active shopping cart
@@ -246,9 +445,9 @@ paths:
         '404':
           description: Cart or item not found.
 
-# ---------------------------------------------------------------------------
+# ===========================================================================
 # COMPONENTS & SCHEMAS
-# ---------------------------------------------------------------------------
+# ===========================================================================
 components:
   securitySchemes:
     BearerAuth:
@@ -258,6 +457,33 @@ components:
       description: Enter your JWT Bearer token to authorize requests.
 
   schemas:
+    AddressInput:
+      type: object
+      required:
+        - street
+        - city
+        - state
+        - country
+      properties:
+        street:
+          type: string
+          example: 123 Main Street
+        city:
+          type: string
+          example: Ikeja
+        state:
+          type: string
+          example: Lagos
+        postalCode:
+          type: string
+          example: 100001
+        country:
+          type: string
+          example: Nigeria
+        isDefault:
+          type: boolean
+          example: true
+
     ProductInput:
       type: object
       required:
