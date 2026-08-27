@@ -22,7 +22,9 @@
     "mongoose": "^9.9.4",
     "nodemailer": "^9.0.5",
     "nodemon": "^3.1.14",
-    "resend": "^6.22.1"
+    "resend": "^6.22.1",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "prisma": "^6.12.0"

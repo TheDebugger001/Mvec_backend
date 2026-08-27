@@ -1,0 +1,311 @@
+openapi: 3.0.3
+info:
+  title: Multi-Vendor E-Commerce API
+  description: API documentation for product management, role-based controls, and buyer cart operations.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000/api
+    description: Local Development Server
+
+paths:
+  # ---------------------------------------------------------------------------
+  # PRODUCT ROUTES
+  # ---------------------------------------------------------------------------
+  /products:
+    get:
+      summary: Get active products catalog
+      tags:
+        - Products
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: string
+          description: Filter by category ID
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by product name
+      responses:
+        '200':
+          description: List of active products retrieved successfully.
+
+    post:
+      summary: Create a new product (Vendor/Admin)
+      tags:
+        - Products
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInput'
+      responses:
+        '201':
+          description: Product created successfully.
+        '403':
+          description: Forbidden - Requires Vendor or Admin role.
+
+  /products/slug/{slug}:
+    get:
+      summary: Get single product by slug
+      tags:
+        - Products
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+          example: samsung-galaxy-s24-ultra
+      responses:
+        '200':
+          description: Product details retrieved.
+        '404':
+          description: Product not found.
+
+  /products/{id}:
+    get:
+      summary: Get single product by ID
+      tags:
+        - Products
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: 65d1a2f3b4c5d6e7f8a9b0c1
+      responses:
+        '200':
+          description: Product details retrieved.
+        '404':
+          description: Product not found.
+
+    put:
+      summary: Update product (Vendor updates own; Admin blocked from changing stock)
+      tags:
+        - Products
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateInput'
+      responses:
+        '200':
+          description: Product updated successfully.
+        '403':
+          description: Forbidden - Modifying stock by Admin or updating unowned product.
+        '404':
+          description: Product not found.
+
+    delete:
+      summary: Delete product (Vendor updates own; Admin deletes any)
+      tags:
+        - Products
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product deleted successfully.
+        '403':
+          description: Forbidden.
+
+  /products/vendor/me:
+    get:
+      summary: Get products belonging to the logged-in vendor
+      tags:
+        - Products
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of vendor's products.
+        '403':
+          description: Forbidden - Vendor role required.
+
+  # ---------------------------------------------------------------------------
+  # CART ROUTES
+  # ---------------------------------------------------------------------------
+  /cart:
+    get:
+      summary: Get user's active shopping cart
+      tags:
+        - Cart
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Shopping cart retrieved.
+
+    post:
+      summary: Add item to cart (Blocks vendors from buying their own items)
+      tags:
+        - Cart
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+              properties:
+                productId:
+                  type: string
+                  example: 65d1a2f3b4c5d6e7f8a9b0c1
+                quantity:
+                  type: integer
+                  default: 1
+                  example: 2
+      responses:
+        '200':
+          description: Item added to cart.
+        '400':
+          description: Out of stock or requested quantity exceeds available inventory.
+        '403':
+          description: Action denied - Cannot add your own product to cart.
+
+    delete:
+      summary: Clear all items from cart
+      tags:
+        - Cart
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Cart cleared successfully.
+
+  /cart/items/{productId}:
+    put:
+      summary: Update quantity of a specific cart item
+      tags:
+        - Cart
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+                  example: 3
+      responses:
+        '200':
+          description: Cart quantity updated.
+        '400':
+          description: Invalid quantity or exceeds available stock.
+
+    delete:
+      summary: Remove a specific item from cart
+      tags:
+        - Cart
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item removed from cart.
+        '404':
+          description: Cart or item not found.
+
+# ---------------------------------------------------------------------------
+# COMPONENTS & SCHEMAS
+# ---------------------------------------------------------------------------
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Enter your JWT Bearer token to authorize requests.
+
+  schemas:
+    ProductInput:
+      type: object
+      required:
+        - name
+        - slug
+        - sku
+        - price
+        - stockQuantity
+        - category
+      properties:
+        name:
+          type: string
+          example: Samsung Galaxy S24 Ultra
+        slug:
+          type: string
+          example: samsung-galaxy-s24-ultra
+        sku:
+          type: string
+          example: SAM-S24U-512GB
+        price:
+          type: number
+          example: 1500000
+        discountPrice:
+          type: number
+          example: 1400000
+        stockQuantity:
+          type: integer
+          example: 25
+        category:
+          type: string
+          example: 65c123456789abcdef012345
+        description:
+          type: string
+          example: Flagship Android smartphone with AI capabilities.
+
+    ProductUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Samsung Galaxy S24 Ultra (Updated)
+        price:
+          type: number
+          example: 1450000
+        stockQuantity:
+          type: integer
+          example: 30
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, OUT_OF_STOCK]
+          example: ACTIVE

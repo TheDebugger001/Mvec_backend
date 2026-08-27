@@ -3,6 +3,11 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const routes = require("./src/routes/auth.routes");
 
+// Swagger setup
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
+const swaggerDocument = YAML.load("./swagger.yaml");
+
 // Load all models into mongoose entry
 const User = require("./src/models/User");
 const Category = require("./src/models/Category");
@@ -25,6 +30,7 @@ app.use(express.json());
 app.use("/api/auth", require("./src/routes/auth.routes"));
 app.use("/api/products", require("./src/routes/product.routes"));
 app.use("/api/cart", require("./src/routes/cart.routes"));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get("/", (req, res) => {
   res.json({
