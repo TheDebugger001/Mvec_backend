@@ -1,6 +1,7 @@
 const Order = require("../models/Order");
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
+const { releaseOrderEarnings } = require("./payout.controller");
 
 // Helper function to generate unique order numbers
 const generateOrderNumber = () => {
@@ -196,7 +197,13 @@ exports.updateVendorOrderStatus = async (req, res) => {
       "FAILED",
     ];
 
-    const allowedPaymentStatuses = ["PENDING", "CONFIRMED", "PAID", "FAILED", "REFUNDED"];
+    const allowedPaymentStatuses = [
+      "PENDING",
+      "CONFIRMED",
+      "PAID",
+      "FAILED",
+      "REFUNDED",
+    ];
 
     const order = await Order.findById(orderId);
     if (!order) {
@@ -205,28 +212,41 @@ exports.updateVendorOrderStatus = async (req, res) => {
 
     // Verify vendor ownership
     const hasVendorItems = order.items.some(
-      (item) => item.vendor.toString() === req.user.id.toString()
+      (item) => item.vendor.toString() === req.user.id.toString(),
     );
 
     if (!hasVendorItems && req.user.role !== "super_admin") {
-      return res.status(403).json({ message: "Access denied: You do not own items in this order." });
+      return res
+        .status(403)
+        .json({
+          message: "Access denied: You do not own items in this order.",
+        });
     }
 
     if (status) {
       if (!allowedOrderStatuses.includes(status)) {
-        return res.status(400).json({ message: `Invalid order status: ${status}` });
+        return res
+          .status(400)
+          .json({ message: `Invalid order status: ${status}` });
       }
       order.orderStatus = status;
     }
 
     if (paymentStatus) {
       if (!allowedPaymentStatuses.includes(paymentStatus)) {
-        return res.status(400).json({ message: `Invalid payment status: ${paymentStatus}` });
+        return res
+          .status(400)
+          .json({ message: `Invalid payment status: ${paymentStatus}` });
       }
       order.paymentStatus = paymentStatus;
     }
 
     await order.save();
+
+    //Trigger payout release if order is marked as DELIVERED
+    if (status === "DELIVERED") {
+      await releaseOrderEarnings(order._id, req.user.id);
+    }
 
     return res.status(200).json({
       message: "Order updated successfully",

@@ -32,6 +32,7 @@ app.use("/api/products", require("./src/routes/product.routes"));
 app.use("/api/cart", require("./src/routes/cart.routes"));
 app.use("/api/orders", require("./src/routes/order.routes"));
 app.use("/api/stores", require("./src/routes/store.routes"));
+app.use("/api/payouts", require("./src/routes/payout.routes"));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get("/", (req, res) => {
